@@ -65,6 +65,10 @@ lib_deps =
   knolleary/PubSubClient@^2.8
 ```
 
+### MQTT & Homeassistant
+
+Mqtt is supported out of the box should work with Homeassistant seamlessly. Simply edit the `main.cpp` file and provide your mqtt user/pass details as well as your broker information. Should you have Mqtt auto discovery on the device will be added automatically in your HA. If not you may need to add it manually.
+
 ### Build & Install
 
 Connect your ESP32-WROOM-32 dev board and run the following command:
