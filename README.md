@@ -101,6 +101,10 @@ I use `clangd` as my LSP. To get it to be aware of `platformio` libs you need to
 
 This should create a file called `compile_commands.json` in the root of the project.
 
+#### Secrets
+
+Rename `secrets-sample.h` in `src/` folder to `secrets.h` and add the needed information for wifi/mqtt.
+
 ### Contributors
 
 A massive thanks to [@cthuwu_chan](https://www.reddit.com/user/cthuwu_chan/) who helped me decode the signal originally. :bow:
