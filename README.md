@@ -105,6 +105,10 @@ This should create a file called `compile_commands.json` in the root of the proj
 
 Rename `secrets-sample.h` in `src/` folder to `secrets.h` and add the needed information for wifi/mqtt.
 
+### Limitations
+
+In using the `cc1101` module (as does the Flipper Zero), the Charlton & Jenkins remotes simply transmit data too fast for the `cc1101` to catch entirely. So most of the time it misses data. This unfortunatley means we can't really keep the remote itself in sync with actions taken from this device - until another solution presents itself that is...
+
 ### Contributors
 
 A massive thanks to [@cthuwu_chan](https://www.reddit.com/user/cthuwu_chan/) who helped me decode the signal originally. :bow:
