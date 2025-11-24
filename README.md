@@ -30,6 +30,10 @@ I plan to add reverse engineer more button features with the aim to evtually map
 
 **Note**: This has only been test with an `ESP32-WROOM-32`, but it is more than likely other ESP32 board will work as well, or need just some minor configuration changes to work. Pull requests are welcome.
 
+<div style="display:flex;margin:auto;">
+    <img src="./images/cc1101.jpeg" width="500" height="500" />
+</div>
+
 ### Wiring
 
 | CC1101 pin | ESP32 pin | Notes           |
