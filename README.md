@@ -1,7 +1,7 @@
 # ESP32 Controller for Charlton & Jenrick Fireplace
 
-This project uses an **ESP32-WROOM-32** and a **CC1101** 433 MHz transceiver to control a fireplace using a captured 2-FSK RF payload.  
-It integrates with **Home Assistant via MQTT** and also exposes a **simple web interface** with ON/OFF buttons.
+This project uses an **ESP32-WROOM-32** and a **CC1101** 433 MHz transceiver to control a fireplace using captured 2-FSK RF payloads.
+It integrates with **Home Assistant via MQTT** and also exposes a **simple web interface** with buttons for power, navigation, flame effects, sound, and more.
 
 <div style="display:flex;margin:auto;height:550px;">
     <img src="./images/remote.jpeg" />
@@ -20,7 +20,25 @@ I have only tested this on my own fireplace which is an `i1800e`, but all of the
 | i1800e    | true   | Yes     |
 | i2200e    | false  | unknown |
 
-I plan to add reverse engineer more button features with the aim to evtually map the full controller, when time permits.
+## Supported Remote Buttons
+
+The following buttons from the Charlton & Jenrick remote have been reverse-engineered and are currently supported:
+
+| Button       | Function                    | Status  | Notes                              |
+| ------------ | --------------------------- | ------- | ---------------------------------- |
+| ON           | Power on fireplace          | ✅ Tested | Fully functional                  |
+| OFF          | Power off fireplace         | ✅ Tested | Fully functional                  |
+| Left Arrow   | Navigate left/decrease      | ✅ Tested | Captured and working              |
+| Right Arrow  | Navigate right/increase     | ✅ Tested | Captured and working              |
+| Plus (+)     | Increase setting            | ✅ Tested | Captured and working              |
+| Minus (-)    | Decrease setting            | ✅ Tested | Captured and working              |
+| Flame Effect | Toggle flame effect modes   | ✅ Tested | Captured and working              |
+| Sound        | Toggle sound on/off         | ✅ Tested | Captured and working              |
+
+All supported buttons are exposed via:
+- **Web UI**: Simple button interface accessible at the ESP32's IP address
+- **MQTT**: Command topic `home/fireplace/cmnd` with payloads: `ON`, `OFF`, `LEFT`, `RIGHT`, `PLUS`, `MINUS`, `FLAME`, `SOUND`
+- **Home Assistant**: Auto-discovered as switch (ON/OFF) and button entities
 
 ## Hardware
 
