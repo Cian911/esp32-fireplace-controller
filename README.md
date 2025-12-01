@@ -24,18 +24,19 @@ I have only tested this on my own fireplace which is an `i1800e`, but all of the
 
 The following buttons from the Charlton & Jenrick remote have been reverse-engineered and are currently supported:
 
-| Button       | Function                    | Status  | Notes                              |
-| ------------ | --------------------------- | ------- | ---------------------------------- |
-| ON           | Power on fireplace          | ✅ Tested | Fully functional                  |
-| OFF          | Power off fireplace         | ✅ Tested | Fully functional                  |
-| Left Arrow   | Navigate left/decrease      | ✅ Tested | Captured and working              |
-| Right Arrow  | Navigate right/increase     | ✅ Tested | Captured and working              |
-| Plus (+)     | Increase setting            | ✅ Tested | Captured and working              |
-| Minus (-)    | Decrease setting            | ✅ Tested | Captured and working              |
-| Flame Effect | Toggle flame effect modes   | ✅ Tested | Captured and working              |
-| Sound        | Toggle sound on/off         | ✅ Tested | Captured and working              |
+| Button       | Function                  | Status              | Notes            |
+| ------------ | ------------------------- | ------------------- | ---------------- |
+| ON           | Power on fireplace        | ✅ Tested           | Fully functional |
+| OFF          | Power off fireplace       | ✅ Tested           | Fully functional |
+| Left Arrow   | Navigate left/decrease    | ❓ More work needed | Captured         |
+| Right Arrow  | Navigate right/increase   | ❓ More work needed | Captured         |
+| Plus (+)     | Increase setting          | ❓ More work needed | Captured         |
+| Minus (-)    | Decrease setting          | ❓ More work needed | Captured         |
+| Flame Effect | Toggle flame effect modes | ❓ More work needed | Captured         |
+| Sound        | Toggle sound on/off       | ❓ More work needed | Captured         |
 
 All supported buttons are exposed via:
+
 - **Web UI**: Simple button interface accessible at the ESP32's IP address
 - **MQTT**: Command topic `home/fireplace/cmnd` with payloads: `ON`, `OFF`, `LEFT`, `RIGHT`, `PLUS`, `MINUS`, `FLAME`, `SOUND`
 - **Home Assistant**: Auto-discovered as switch (ON/OFF) and button entities
