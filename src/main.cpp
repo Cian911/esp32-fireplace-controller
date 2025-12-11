@@ -395,6 +395,7 @@ void setup() {
   }
 
   if (mqtt_enabled) {
+    mqttClient.setBufferSize(512);
     mqttClient.setCallback(mqtt_callback);
     connect_mqtt();
   }
