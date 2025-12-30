@@ -8,9 +8,16 @@
 #include <esp_task_wdt.h>
 #include <WebServer.h>
 #include <secrets.h>
-#include <payloads.h>
 #include <mqtt.h>
+#include <profiles.h>
 #include "HardwareSerial.h"
+#if defined(REMOTE_PROFILE_IRANGE)
+  #include "irange_payloads.h"
+#elif defined(REMOTE_PROFILE_NON_IRANGE)
+  #include "non_irange_payloads.h"
+#else
+  #error "Select a payload profile"
+#endif
 
 using namespace CC1101;
 
@@ -47,23 +54,23 @@ WebServer server(80);
 
 // -------------------- HELPERS --------------------
 
-void configure_radio_for_fireplace() {
+void configure_radio_for_fireplace(const RadioConfig& cfg) {
   Serial.println(F("[RF] Configuring CC1101 for fireplace..."));
 
   Status s;
 
-  radio.setModulation(MOD_2FSK);
+  radio.setModulation(cfg.modulation);
 
-  s = radio.setFrequency(433.913);        // MHz
+  s = radio.setFrequency(cfg.freq_mhz);        // MHz
   Serial.print(F("[RF] setFrequency: ")); Serial.println(s);
 
   s = radio.setFrequencyDeviation(20.0);  // kHz
   Serial.print(F("[RF] setFreqDev: ")); Serial.println(s);
 
-  s = radio.setDataRate(20.0);            // kBaud (≈ 50 µs/bit)
+  s = radio.setDataRate(cfg.datarate_kbaud);            // kBaud (≈ 50 µs/bit)
   Serial.print(F("[RF] setDataRate: ")); Serial.println(s);
 
-  s = radio.setRxBandwidth(58.0);         // kHz
+  s = radio.setRxBandwidth(cfg.rx_bw_khz);         // kHz
   Serial.print(F("[RF] setRxBW: ")); Serial.println(s);
 
   // Power (dBm)
@@ -363,6 +370,18 @@ void handleState() {
   server.send(200, "application/json", json);
 }
 
+bool decode_irange_remote(const uint8_t* data, size_t len, char* out, size_t out_len) {
+  (void)data; (void)len;
+  if (out && out_len) out[0] = '\0';
+  return false;
+}
+
+bool decode_non_irange_remote(const uint8_t* data, size_t len, char* out, size_t out_len) {
+  (void)data; (void)len;
+  if (out && out_len) out[0] = '\0';
+  return false;
+}
+
 // -------------------- ARDUINO SETUP / LOOP --------------------
 
 void setup() {
@@ -407,7 +426,8 @@ void setup() {
     while (true) { delay(1000); }
   }
 
-  configure_radio_for_fireplace();
+  configure_radio_for_fireplace(ACTIVE_PROFILE.radio);
+  Serial.println("Using Profile: "); Serial.print(ACTIVE_PROFILE.name);
 
   fireplace_state_on = false;
   publish_state("OFF");
