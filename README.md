@@ -9,16 +9,27 @@ It integrates with **Home Assistant via MQTT** and also exposes a **simple web i
 
 ## Information
 
-I have only tested this on my own fireplace which is an `i1800e`, but all of the following ranges below _should_ work as well, but they have not been tested.
+I have tested this on my own fireplace which is an `i1800e`.
 
-| Fireplace | Tested | Working |
-| --------- | ------ | ------- |
-| i750e     | false  | unknown |
-| i1000e    | false  | unknown |
-| i1250e    | false  | unknown |
-| i1500e    | false  | unknown |
-| i1800e    | true   | Yes     |
-| i2200e    | false  | unknown |
+There are **two “families”** of fireplaces/remotes that this project can target:
+
+- **iRange remotes** (2-FSK profile)
+- **Non-iRange remotes** (ASK/OOK profile) — known IDs: `1250E / 1500E / 1800E`
+
+> ✅ The `1800E` (non-iRange) profile has been **tested and confirmed working**.  
+> The other IDs (`1250E`, `1500E`) are expected to work but have not been tested yet.
+
+| Fireplace | Tested | Working | Profile to Build     |
+| --------- | ------ | ------- | -------------------- |
+| i750e     | false  | unknown | remote_irange        |
+| i1000e    | false  | unknown | remote_irange        |
+| i1250e    | false  | unknown | remote_irange        |
+| i1500e    | false  | unknown | remote_irange        |
+| i1800e    | true   | Yes     | remote_irange        |
+| i2200e    | false  | unknown | remote_irange        |
+| 1250e     | false  | unknown | remote_non_irange    |
+| 1500e     | false  | unknown | remote_non_irange    |
+| 1800e     | true   | Yes     | remote_non_irange    |
 
 ## Supported Remote Buttons
 
@@ -94,10 +105,36 @@ Mqtt is supported out of the box should work with Homeassistant seamlessly. Simp
 
 ### Build & Install
 
-Connect your ESP32-WROOM-32 dev board and run the following command:
+### Profiles
+
+| PlatformIO env | Define | Modulation | Payload Header |
+|---|---|---|---|
+| `remote_irange` | `REMOTE_PROFILE_IRANGE` | `MOD_2FSK` | `irange_payloads.h` |
+| `remote_non_irange` | `REMOTE_PROFILE_NON_IRANGE` | `MOD_ASK_OOK` | `non_irange_payloads.h` |
+
+In code, the correct payload header is selected at compile time:
+
+```cpp
+#if defined(REMOTE_PROFILE_IRANGE)
+  #include "irange_payloads.h"
+#elif defined(REMOTE_PROFILE_NON_IRANGE)
+  #include "non_irange_payloads.h"
+#else
+  #error "Select a payload profile"
+#endif
+UI + HA discovery also adapt based on ACTIVE_PROFILE.features (e.g. SOUND is removed when not supported).
+```
+
+Connect your ESP32-WROOM-32 dev board and run the following command if your fireplace is an iRange:
 
 ```bash
-platformio run -e esp32dev --target upload
+platformio run -e remote_irange --target upload
+```
+
+Or if it is a non-iRange remote:
+
+```bash
+platformio run -e remote_non_irange --target upload
 ```
 
 Once the upload is complete, you can run the following to see the serial output from your module:

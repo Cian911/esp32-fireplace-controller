@@ -54,6 +54,10 @@ WebServer server(80);
 
 // -------------------- HELPERS --------------------
 
+static inline bool hasFeature(uint32_t feat) {
+  return (ACTIVE_PROFILE.features & feat) != 0;
+}
+
 void configure_radio_for_fireplace(const RadioConfig& cfg) {
   Serial.println(F("[RF] Configuring CC1101 for fireplace..."));
 
@@ -188,9 +192,13 @@ void publish_ha_discovery() {
   mqttClient.publish(HA_DISCOVERY_LEFT_TOPIC , left_payload_discovery, true);
   mqttClient.publish(HA_DISCOVERY_RIGHT_TOPIC , right_payload_discovery, true);
   mqttClient.publish(HA_DISCOVERY_FLAME_EFFECT_TOPIC , flame_effect_payload_discovery, true);
-  mqttClient.publish(HA_DISCOVERY_SOUND_TOPIC , sound_payload_discovery, true);
   mqttClient.publish(HA_DISCOVERY_PLUS_TOPIC , plus_payload_discovery, true);
   mqttClient.publish(HA_DISCOVERY_MINUS_TOPIC , minus_payload_discovery, true);
+
+  if (hasFeature(FEAT_SOUND)) {
+    mqttClient.publish(HA_DISCOVERY_MINUS_TOPIC , sound_payload_discovery, true);
+  }
+
   Serial.println(F("[MQTT] Published discovery event."));
 }
 
@@ -273,6 +281,7 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
 
 String html_page() {
   String state = fireplace_state_on ? "ON" : "OFF";
+
   String html = F(
     "<!DOCTYPE html><html><head>"
     "<meta name='viewport' content='width=device-width,initial-scale=1'/>"
@@ -290,18 +299,29 @@ String html_page() {
     "<button class='on' onclick=\"fetch('/on')\">ON</button>"
     "<button class='off' onclick=\"fetch('/off')\">OFF</button>"
     "</div>"
-    "<div>"
-    "<button class='sound' onclick=\"fetch('/sound')\">SOUND</button>"
-    "<button class='flame' onclick=\"fetch('/flame')\">FLAME</button>"
-    "</div>"
-    "<div>"
-    "<button class='left' onclick=\"fetch('/left')\">LEFT</button>"
-    "<button class='right' onclick=\"fetch('/right')\">RIGHT</button>"
-    "</div>"
-    "<div>"
-    "<button class='plus' onclick=\"fetch('/plus')\">PLUS</button>"
-    "<button class='minus' onclick=\"fetch('/minus')\">MINUS</button>"
-    "</div>"
+  );
+
+  // SOUND / FLAME (only include if supported in profilez)
+  html += F("<div>");
+  if (hasFeature(FEAT_SOUND)) {
+    html += F("<button class='sound' onclick=\"fetch('/sound')\">SOUND</button>");
+  }
+  if (hasFeature(FEAT_FLAME)) {
+    html += F("<button class='flame' onclick=\"fetch('/flame')\">FLAME</button>");
+  }
+  html += F("</div>");
+
+  html += F("<div>");
+  if (hasFeature(FEAT_LEFT))  html += F("<button class='left' onclick=\"fetch('/left')\">LEFT</button>");
+  if (hasFeature(FEAT_RIGHT)) html += F("<button class='right' onclick=\"fetch('/right')\">RIGHT</button>");
+  html += F("</div>");
+
+  html += F("<div>");
+  if (hasFeature(FEAT_PLUS))  html += F("<button class='plus' onclick=\"fetch('/plus')\">PLUS</button>");
+  if (hasFeature(FEAT_MINUS)) html += F("<button class='minus' onclick=\"fetch('/minus')\">MINUS</button>");
+  html += F("</div>");
+
+  html += F(
     "<div class='state'>Current state: <span id='st'></span></div>"
     "<script>"
     "async function updateState(){"
@@ -314,6 +334,7 @@ String html_page() {
     "</script>"
     "</body></html>"
   );
+
   return html;
 }
 
