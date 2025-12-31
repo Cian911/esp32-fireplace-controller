@@ -8,9 +8,16 @@
 #include <esp_task_wdt.h>
 #include <WebServer.h>
 #include <secrets.h>
-#include <payloads.h>
 #include <mqtt.h>
+#include <profiles.h>
 #include "HardwareSerial.h"
+#if defined(REMOTE_PROFILE_IRANGE)
+  #include "irange_payloads.h"
+#elif defined(REMOTE_PROFILE_NON_IRANGE)
+  #include "non_irange_payloads.h"
+#else
+  #error "Select a payload profile"
+#endif
 
 using namespace CC1101;
 
@@ -47,23 +54,27 @@ WebServer server(80);
 
 // -------------------- HELPERS --------------------
 
-void configure_radio_for_fireplace() {
+static inline bool hasFeature(uint32_t feat) {
+  return (ACTIVE_PROFILE.features & feat) != 0;
+}
+
+void configure_radio_for_fireplace(const RadioConfig& cfg) {
   Serial.println(F("[RF] Configuring CC1101 for fireplace..."));
 
   Status s;
 
-  radio.setModulation(MOD_2FSK);
+  radio.setModulation(cfg.modulation);
 
-  s = radio.setFrequency(433.913);        // MHz
+  s = radio.setFrequency(cfg.freq_mhz);        // MHz
   Serial.print(F("[RF] setFrequency: ")); Serial.println(s);
 
   s = radio.setFrequencyDeviation(20.0);  // kHz
   Serial.print(F("[RF] setFreqDev: ")); Serial.println(s);
 
-  s = radio.setDataRate(20.0);            // kBaud (≈ 50 µs/bit)
+  s = radio.setDataRate(cfg.datarate_kbaud);            // kBaud (≈ 50 µs/bit)
   Serial.print(F("[RF] setDataRate: ")); Serial.println(s);
 
-  s = radio.setRxBandwidth(58.0);         // kHz
+  s = radio.setRxBandwidth(cfg.rx_bw_khz);         // kHz
   Serial.print(F("[RF] setRxBW: ")); Serial.println(s);
 
   // Power (dBm)
@@ -181,9 +192,13 @@ void publish_ha_discovery() {
   mqttClient.publish(HA_DISCOVERY_LEFT_TOPIC , left_payload_discovery, true);
   mqttClient.publish(HA_DISCOVERY_RIGHT_TOPIC , right_payload_discovery, true);
   mqttClient.publish(HA_DISCOVERY_FLAME_EFFECT_TOPIC , flame_effect_payload_discovery, true);
-  mqttClient.publish(HA_DISCOVERY_SOUND_TOPIC , sound_payload_discovery, true);
   mqttClient.publish(HA_DISCOVERY_PLUS_TOPIC , plus_payload_discovery, true);
   mqttClient.publish(HA_DISCOVERY_MINUS_TOPIC , minus_payload_discovery, true);
+
+  if (hasFeature(FEAT_SOUND)) {
+    mqttClient.publish(HA_DISCOVERY_MINUS_TOPIC , sound_payload_discovery, true);
+  }
+
   Serial.println(F("[MQTT] Published discovery event."));
 }
 
@@ -266,6 +281,7 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
 
 String html_page() {
   String state = fireplace_state_on ? "ON" : "OFF";
+
   String html = F(
     "<!DOCTYPE html><html><head>"
     "<meta name='viewport' content='width=device-width,initial-scale=1'/>"
@@ -283,18 +299,29 @@ String html_page() {
     "<button class='on' onclick=\"fetch('/on')\">ON</button>"
     "<button class='off' onclick=\"fetch('/off')\">OFF</button>"
     "</div>"
-    "<div>"
-    "<button class='sound' onclick=\"fetch('/sound')\">SOUND</button>"
-    "<button class='flame' onclick=\"fetch('/flame')\">FLAME</button>"
-    "</div>"
-    "<div>"
-    "<button class='left' onclick=\"fetch('/left')\">LEFT</button>"
-    "<button class='right' onclick=\"fetch('/right')\">RIGHT</button>"
-    "</div>"
-    "<div>"
-    "<button class='plus' onclick=\"fetch('/plus')\">PLUS</button>"
-    "<button class='minus' onclick=\"fetch('/minus')\">MINUS</button>"
-    "</div>"
+  );
+
+  // SOUND / FLAME (only include if supported in profilez)
+  html += F("<div>");
+  if (hasFeature(FEAT_SOUND)) {
+    html += F("<button class='sound' onclick=\"fetch('/sound')\">SOUND</button>");
+  }
+  if (hasFeature(FEAT_FLAME)) {
+    html += F("<button class='flame' onclick=\"fetch('/flame')\">FLAME</button>");
+  }
+  html += F("</div>");
+
+  html += F("<div>");
+  if (hasFeature(FEAT_LEFT))  html += F("<button class='left' onclick=\"fetch('/left')\">LEFT</button>");
+  if (hasFeature(FEAT_RIGHT)) html += F("<button class='right' onclick=\"fetch('/right')\">RIGHT</button>");
+  html += F("</div>");
+
+  html += F("<div>");
+  if (hasFeature(FEAT_PLUS))  html += F("<button class='plus' onclick=\"fetch('/plus')\">PLUS</button>");
+  if (hasFeature(FEAT_MINUS)) html += F("<button class='minus' onclick=\"fetch('/minus')\">MINUS</button>");
+  html += F("</div>");
+
+  html += F(
     "<div class='state'>Current state: <span id='st'></span></div>"
     "<script>"
     "async function updateState(){"
@@ -307,6 +334,7 @@ String html_page() {
     "</script>"
     "</body></html>"
   );
+
   return html;
 }
 
@@ -363,6 +391,18 @@ void handleState() {
   server.send(200, "application/json", json);
 }
 
+bool decode_irange_remote(const uint8_t* data, size_t len, char* out, size_t out_len) {
+  (void)data; (void)len;
+  if (out && out_len) out[0] = '\0';
+  return false;
+}
+
+bool decode_non_irange_remote(const uint8_t* data, size_t len, char* out, size_t out_len) {
+  (void)data; (void)len;
+  if (out && out_len) out[0] = '\0';
+  return false;
+}
+
 // -------------------- ARDUINO SETUP / LOOP --------------------
 
 void setup() {
@@ -407,7 +447,8 @@ void setup() {
     while (true) { delay(1000); }
   }
 
-  configure_radio_for_fireplace();
+  configure_radio_for_fireplace(ACTIVE_PROFILE.radio);
+  Serial.println("Using Profile: "); Serial.print(ACTIVE_PROFILE.name);
 
   fireplace_state_on = false;
   publish_state("OFF");
