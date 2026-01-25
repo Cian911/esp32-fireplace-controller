@@ -7,6 +7,7 @@
 #include <cstring>
 #include <esp_task_wdt.h>
 #include <WebServer.h>
+#include <Preferences.h>
 #include <secrets.h>
 #include <mqtt.h>
 #include <profiles.h>
@@ -51,6 +52,10 @@ bool fireplace_state_on = false;
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 WebServer server(80);
+Preferences prefs;
+
+static constexpr char PREF_NAMESPACE[] = "fireplace";
+static constexpr char PREF_KEY_STATE[] = "state";
 
 // -------------------- HELPERS --------------------
 
@@ -161,6 +166,12 @@ void publish_state(const char* state) {
   mqttClient.publish(MQTT_STATE_TOPIC, state, true);  // retained
 }
 
+void persist_and_publish_state(bool on) {
+  fireplace_state_on = on;
+  prefs.putBool(PREF_KEY_STATE, fireplace_state_on);
+  publish_state(fireplace_state_on ? "ON" : "OFF");
+}
+
 void connect_wifi() {
   Serial.print(F("[WiFi] Connecting to "));
   Serial.println(WIFI_SSID);
@@ -204,8 +215,8 @@ void publish_ha_discovery() {
 
 void connect_mqtt() {
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
-
-  while (!mqttClient.connected()) {
+  int tries = 0;
+  while (!mqttClient.connected() && tries < 5) {
     Serial.print(F("[MQTT] Connecting to broker... "));
     bool ok;
     if (strlen(MQTT_USER) > 0) {
@@ -229,6 +240,7 @@ void connect_mqtt() {
       Serial.print(F("failed, rc="));
       Serial.println(mqttClient.state());
       delay(2000);
+      tries++;
     }
   }
 }
@@ -253,12 +265,10 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
   if (topicStr == MQTT_CMND_TOPIC) {
     if (msg == "ON") {
       send_on_btn_payload();
-      fireplace_state_on = true;
-      publish_state("ON");
+      persist_and_publish_state(true);
     } else if (msg == "OFF") {
       send_off_btn_payload();
-      fireplace_state_on = false;
-      publish_state("OFF");
+      persist_and_publish_state(false);
     } else if (msg == "FLAME") {
       send_flame_effect_btn_payload();
     } else if (msg == "SOUND") {
@@ -344,15 +354,13 @@ void handleRoot() {
 
 void handleOn() {
   send_on_btn_payload();
-  fireplace_state_on = true;
-  publish_state("ON");
+  persist_and_publish_state(true);
   server.send(200, "application/json", "{\"result\":\"ON\"}");
 }
 
 void handleOff() {
   send_off_btn_payload();
-  fireplace_state_on = false;
-  publish_state("OFF");
+  persist_and_publish_state(false);
   server.send(200, "application/json", "{\"result\":\"OFF\"}");
 }
 
@@ -413,6 +421,11 @@ void setup() {
   // Start reboot watchdog
   last_reboot = millis();
 
+  prefs.begin(PREF_NAMESPACE, false);
+  fireplace_state_on = prefs.getBool(PREF_KEY_STATE, false);
+  Serial.print(F("[STATE] Restored persisted state: "));
+  Serial.println(fireplace_state_on ? F("ON") : F("OFF"));
+
   connect_wifi();
 
   // Web server routes
@@ -450,16 +463,22 @@ void setup() {
   configure_radio_for_fireplace(ACTIVE_PROFILE.radio);
   Serial.println("Using Profile: "); Serial.print(ACTIVE_PROFILE.name);
 
-  fireplace_state_on = false;
-  publish_state("OFF");
+  // Publish restored state on boot so subscribers stay in sync.
+  if (mqtt_enabled) {
+    publish_state(fireplace_state_on ? "ON" : "OFF");
+  }
 }
 
 void loop() {
+  if (WiFi.status() != WL_CONNECTED) {
+    connect_wifi();
+  }
+
   if (mqtt_enabled && !mqttClient.connected()) {
     connect_mqtt();
   }
 
-  if (mqtt_enabled) {
+  if (mqtt_enabled && mqttClient.connected()) {
     mqttClient.loop();
   }
 
