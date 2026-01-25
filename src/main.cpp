@@ -463,9 +463,6 @@ void setup() {
   configure_radio_for_fireplace(ACTIVE_PROFILE.radio);
   Serial.println("Using Profile: "); Serial.print(ACTIVE_PROFILE.name);
 
-  // Publish restored state on boot so subscribers stay in sync.
-  if (mqtt_enabled) {
-    publish_state(fireplace_state_on ? "ON" : "OFF");
   }
 }
 
