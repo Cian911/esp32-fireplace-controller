@@ -32,6 +32,7 @@ const unsigned long REBOOT_INTERVAL = 43200000;  // 12 hours
 bool mqtt_enabled = false;
 const uint16_t MQTT_PORT   = 1883;
 const char* MQTT_CLIENT_ID = "esp32_fireplace_1";
+const unsigned int MQTT_MAX_RETRIES = 5;
 
 // ------------ RADIO PINS / INSTANCE ------------
 
@@ -216,7 +217,7 @@ void publish_ha_discovery() {
 void connect_mqtt() {
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   int tries = 0;
-  while (!mqttClient.connected() && tries < 5) {
+  while (!mqttClient.connected() && tries < MQTT_MAX_RETRIES) {
     Serial.print(F("[MQTT] Connecting to broker... "));
     bool ok;
     if (strlen(MQTT_USER) > 0) {
